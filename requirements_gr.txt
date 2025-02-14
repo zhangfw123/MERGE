@@ -1,0 +1,17 @@
+accelerate==0.28.0
+bitsandbytes
+deepspeed==0.16.1
+evaluate
+peft==0.13.2
+sentencepiece
+tqdm
+protobuf==3.20.0
+trl==0.11.0
+torch==1.13.1
+torchvision==0.14.1
+torchaudio==0.13.1
+transformers==4.47.0
+k-means-constrained==0.7.3
+torch-geometric==2.6.1
+faiss-cpu==1.9.0
+numpy==1.23.4
