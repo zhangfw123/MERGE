@@ -4,10 +4,7 @@ import torch.utils.data as data
 import random
 import json
 def calculate_average_embedding(embeddings_list):
-    # 将嵌入列表转换为NumPy数组
     embeddings_array = np.array(embeddings_list)
-    
-    # 计算平均值
     average_embedding = np.mean(embeddings_array, axis=0)
     
     return average_embedding
@@ -30,7 +27,7 @@ class EmbDataset(data.Dataset):
 
 class ConEmbDataset(data.Dataset):
 
-    def __init__(self, data_path, file_path=""):
+    def __init__(self, data_path, file_path="./data/esci/"):
 
         self.data_path = data_path
         self.embeddings = np.load(data_path)
@@ -49,7 +46,7 @@ class ConEmbDataset(data.Dataset):
             while inner_contrastive_doc == index and len(self.query2docs[random_query]) > 1:
                 inner_contrastive_doc = random.choice(list(self.query2docs[random_query].keys()))
             if inner_contrastive_doc != index:
-                extra_index.add(inner_contrastive_doc)
+                extra_index.add((inner_contrastive_doc, c_rel))
                 inner_contrastive_pairs.append((index, inner_contrastive_doc))
             sam_rel_doc = index
             while sam_rel_doc == index and len(self.query2docs_rel[random_query][c_rel]) > 1:
@@ -61,16 +58,17 @@ class ConEmbDataset(data.Dataset):
             if other_rel in self.query2docs_rel[random_query]:
                 other_rel_docs = random.choices(self.query2docs_rel[random_query][other_rel], k=2)
             if len(other_rel_docs) == 2:
-                extra_index.add(other_rel_docs[0])
-                extra_index.add(other_rel_docs[1])
-                extra_index.add(sam_rel_doc)
+                extra_index.add((other_rel_docs[0], other_rel))
+                extra_index.add((other_rel_docs[1], other_rel))
+                extra_index.add((sam_rel_doc, c_rel))
                 if other_rel < c_rel:
                     outer_contrastive_pairs.append((index, sam_rel_doc, other_rel_docs[0]))
                 else:
-                    outer_contrastive_pairs.append((other_rel_docs[0], other_rel_docs[1], index, sam_rel_doc))
+                    outer_contrastive_pairs.append((other_rel_docs[0], other_rel_docs[1], index))
         else:
+            c_rel = 1
             q_emb = self.embeddings[index]
-        return q_emb, inner_contrastive_pairs, outer_contrastive_pairs, extra_index
+        return q_emb, inner_contrastive_pairs, outer_contrastive_pairs, extra_index, c_rel
     def _create_query_embs(self):
         query_embs = []
         for query in self.query2docs:
@@ -83,16 +81,19 @@ class ConEmbDataset(data.Dataset):
     def __getitem__(self, index):
         emb = self.embeddings[index]
         tensor_emb=torch.FloatTensor(emb).view(1, -1)
-        q_emb, inner_contrastive_pairs, outer_contrastive_pairs, extra_index = self._sample_contrastive_pair(index)
-
+        q_emb, inner_contrastive_pairs, outer_contrastive_pairs, extra_index, c_rel = self._sample_contrastive_pair(index)
+        # print(inner_contrastive_pairs, outer_contrastive_pairs)
         if extra_index:
-            extra_tensor_emb = self.embeddings[list(extra_index)]
+            extra_tensor_emb = self.embeddings[list([i[0] for i in extra_index])]
             extra_tensor_emb = torch.FloatTensor(extra_tensor_emb)
+            extra_qd_rel = [i[1] for i in extra_index]
+            extra_index = [i[0] for i in extra_index]
         else:
             extra_index = None
             extra_tensor_emb = None
+            extra_qd_rel = None
         q_emb = torch.FloatTensor(q_emb).view(1, -1)
-        return tensor_emb, index, q_emb, inner_contrastive_pairs, outer_contrastive_pairs, extra_index, extra_tensor_emb
+        return tensor_emb, index, q_emb, inner_contrastive_pairs, outer_contrastive_pairs, extra_index, extra_tensor_emb, c_rel, extra_qd_rel
     
 
     def __len__(self):

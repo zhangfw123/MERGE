@@ -66,86 +66,17 @@ class RQVAE(nn.Module):
         self.decode_layer_dims = self.encode_layer_dims[::-1]
         self.decoder = MLPLayers(layers=self.decode_layer_dims,
                                        dropout=self.dropout_prob,bn=self.bn)
-    def relevance_docs_contrastive_loss(self, x_q, contrastive_pairs, temperature=0.1):
-        batch_size = x_q.size(0)
-        device = x_q.device
-        temperature = 1.0
-        # 计算余弦相似度矩阵
-        sim_matrix = F.cosine_similarity(x_q.unsqueeze(1), x_q.unsqueeze(0), dim=2)  # (batch_size, batch_size)
-        sim_matrix = sim_matrix / temperature  # 缩放相似度
-
-        # 初始化损失
-        loss = 0.0
-        
-        # 遍历所有正样本对
-        for idx_1, idx_2 in contrastive_pairs:
-            # 正样本对的相似度
-            pos_sim = sim_matrix[idx_1, idx_2]
-
-            # 负样本对的相似度
-            neg_sim = torch.cat([sim_matrix[idx_1, :idx_2], sim_matrix[idx_1, idx_2+1:]])
-
-            # 计算对比损失
-            logits = torch.cat([pos_sim.unsqueeze(0), neg_sim])  # (num_classes,)
-            labels = torch.zeros(1, dtype=torch.long, device=device)  # 正样本对的索引为 0
-
-            # 计算交叉熵损失
-            loss += F.cross_entropy(logits.unsqueeze(0), labels)  # logits: (1, num_classes), labels: (1,)
-
-        # 平均损失
-        loss = loss / len(contrastive_pairs)
+    def cos_sim_loss(self, x1, x2, qd_align_w):
+        cos_sim = qd_align_w*F.cosine_similarity(x1, x2, dim=-1)
+        loss = 1 - cos_sim.mean()
         return loss
-    def relevance_docs_contrastive_loss_matrix(self, x_q, contrastive_pairs, temperature=0.1):
-        """
-        计算对比损失（矩阵形式）
-
-        :param x_q: 编码后的特征，形状为 (batch_size, feature_dim)
-        :param contrastive_pairs: 正样本对列表，每个元素是一个元组 (idx_1, idx_2)
-        :param temperature: 温度参数，控制对比损失的敏感度
-        :return: 对比损失
-        """
-        batch_size = x_q.size(0)
-        device = x_q.device
-
-        sim_matrix = F.cosine_similarity(x_q.unsqueeze(1), x_q.unsqueeze(0), dim=2) / temperature
-
-        # 将 contrastive_pairs 转换为两个索引张量 idx1 和 idx2
-        idx1 = torch.tensor([pair[0] for pair in contrastive_pairs], dtype=torch.long, device=device)  # (N,)
-        idx2 = torch.tensor([pair[1] for pair in contrastive_pairs], dtype=torch.long, device=device)  # (N,)
-
-        # 获取所有正样本对的相似度，形状为 (N, 1)
-        pos_sim = sim_matrix[idx1, idx2].unsqueeze(1)  # Positive similarities
-
-        # 获取对应 idx1 的所有相似度，形状为 (N, batch_size)
-        all_sim = sim_matrix[idx1, :]  # (N, batch_size)
-
-        # 创建掩码，以排除正样本对的相似度
-        mask = torch.ones_like(all_sim, dtype=torch.bool)
-        mask.scatter_(1, idx2.view(-1, 1), False)  # 将正样本的位置置为 False
-
-        # 提取负样本的相似度，形状为 (N, batch_size - 1)
-        neg_sim = all_sim.masked_select(mask).view(all_sim.size(0), -1)
-
-        # 将正样本相似度放在第一列，负样本放在后面，形状为 (N, 1 + batch_size - 1)
-        logits = torch.cat([pos_sim, neg_sim], dim=1)
-
-        # 标签全为 0，表示正样本是 logits 的第一个位置
-        labels = torch.zeros(logits.size(0), dtype=torch.long, device=device)  # (N,)
-
-        # 计算交叉熵损失
-        loss = F.cross_entropy(logits, labels)
-
-        return loss
-
-    def forward(self, x, q_embs, labels, outer_contrastive_pairs=None, inner_triplet_pairs=None, use_sk=True):
+    def forward(self, x, q_embs, labels, outer_contrastive_pairs=None, inner_triplet_pairs=None, qd_align_w=None, use_sk=True):
         x = self.encoder(x)
         q_encode =  self.encoder(q_embs)
         x_q, rq_loss, outer_con_losses, inner_triplet_losses, indices = self.rq(x, labels, outer_contrastive_pairs, inner_triplet_pairs,  use_sk=use_sk)
         out = self.decoder(x_q)
-        qd_align_loss = F.mse_loss(x, q_encode, reduction='mean')
+        qd_align_loss = self.cos_sim_loss(x, q_encode, qd_align_w)
         return out, rq_loss, indices, x_q, outer_con_losses, inner_triplet_losses, qd_align_loss
-    
-    
     
     def vq_initialization(self,x, use_sk=True):
         self.rq.vq_ini(self.encoder(x))

@@ -133,11 +133,12 @@ class Trainer(object):
             centers, labels = self.constrained_km(emb)
             self.labels[str(idx)] = labels
         for batch_idx, data in enumerate(iter_data):
-            doc_embs, query_embs, outer_contrastive_pairs, inner_triplet_pairs = data
+            doc_embs, query_embs, outer_contrastive_pairs, inner_triplet_pairs, qd_align_w = data
             doc_embs = doc_embs.to(self.device)
             query_embs = query_embs.to(self.device)
+            qd_align_w  = qd_align_w.to(self.device)
             self.optimizer.zero_grad()
-            out, rq_loss, indices, dense_out, outer_con_losses, inner_triplet_losses, qd_align_loss = self.model(doc_embs, query_embs, self.labels, outer_contrastive_pairs, inner_triplet_pairs)
+            out, rq_loss, indices, dense_out, outer_con_losses, inner_triplet_losses, qd_align_loss = self.model(doc_embs, query_embs, self.labels, outer_contrastive_pairs, inner_triplet_pairs, qd_align_w=qd_align_w)
             loss, loss_recon, quant_loss = self.model.compute_loss(out, rq_loss, dense_out, outer_con_losses, inner_triplet_losses, qd_align_loss, xs=doc_embs)
             
             self._check_nan(loss)

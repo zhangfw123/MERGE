@@ -70,12 +70,14 @@ def collate_fn(batch):
     idx_cnt = 0
     map_function_inner = lambda x: (old_to_new_indexs.get(x[0], None), old_to_new_indexs.get(x[1], None))
     map_function_outer = lambda x: (old_to_new_indexs.get(x[0], None), old_to_new_indexs.get(x[1], None), old_to_new_indexs.get(x[2], None))
+    qd_align_w = []
     for bc in batch:
         if bc[1] not in old_to_new_indexs:
             old_to_new_indexs[bc[1]] = idx_cnt
             idx_cnt += 1
         doc_embs.append(bc[0])
         query_embs.append(bc[2])
+        qd_align_w.append(1/(4-bc[7]))
         indexs.append(old_to_new_indexs[bc[1]])
         if len(inner_contrastive_pairs) < 5000000:
             if bc[5] is not None:
@@ -83,17 +85,18 @@ def collate_fn(batch):
                     old_to_new_indexs[extra_index] = idx_cnt 
                     indexs.append(old_to_new_indexs[extra_index])
                     idx_cnt += 1
+                for extra_rel in bc[8]:
+                    qd_align_w.append(1/(4-extra_rel))
                 doc_embs.append(bc[6])
                 query_embs.append(torch.cat([bc[2] for i in range(len(bc[6]))], dim=0))
             inner_contrastive_pairs += list(map(map_function_inner, bc[3]))
             outer_contrastive_pairs += list(map(map_function_outer, bc[4]))
         
-            
+    qd_align_w = torch.tensor(qd_align_w).float()
     
     doc_embs = torch.cat(doc_embs, dim=0)
     query_embs = torch.cat(query_embs, dim=0)
-    return doc_embs, query_embs, inner_contrastive_pairs, outer_contrastive_pairs
-
+    return doc_embs, query_embs, inner_contrastive_pairs, outer_contrastive_pairs, qd_align_w
 if __name__ == '__main__':
     """fix the random seed"""
     seed = 42

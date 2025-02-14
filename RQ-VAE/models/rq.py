@@ -57,7 +57,7 @@ class ResidualVectorQuantizer(nn.Module):
     def outer_contrastive_loss(self, x_q, contrastive_pairs, temperature=0.1):
         device = x_q.device
         sim_matrix = F.cosine_similarity(x_q.unsqueeze(1), x_q.unsqueeze(0), dim=2) / temperature
-
+        # print(contrastive_pairs)
         idx1 = torch.tensor([pair[0] for pair in contrastive_pairs], dtype=torch.long, device=device)  # (N,)
         idx2 = torch.tensor([pair[1] for pair in contrastive_pairs], dtype=torch.long, device=device)  # (N,)
 

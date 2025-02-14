@@ -9,8 +9,19 @@ For RQ-VAE: requirements_rqvae.txt
 For GR: requirements_gr.txt
 
 
+### Preprocess data
+
+1. download raw esci data
+
+2. preprocess 
+```
+python data_process/extract_esci_item.py
+```
+
 ### Generate Doc Embeddings
+```
 python data_process/esci_text_emb_items_t5.py --root data --dataset esci --plm_name t5-base --plm_checkpoint [plm_model]
+```
 
 ### Train RQ-VAE in MERGE
 
