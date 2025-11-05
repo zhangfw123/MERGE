@@ -13,10 +13,14 @@ For GR: requirements_gr.txt
 
 1. download raw esci data
 
-2. preprocess 
+2. preprocess
+
 ```
-python data_process/extract_esci_item.py
+Using process_data.ipynb to obtain the preprocessed data, including: doc_to_relevance_docs.json, esci_lang.item.json, esci_lang.test.seen.json, esci_lang.train.json, product_id_to_index.json. 
+
+lang: us, es, jp
 ```
+
 
 ### Generate Doc Embeddings
 ```

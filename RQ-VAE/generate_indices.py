@@ -146,30 +146,30 @@ if model.rq.vq_layers[-1].sk_epsilon == 0.0:
     model.rq.vq_layers[-1].sk_epsilon = 0.003
 
 model.rq.vq_layers[-1].sk_epsilon = 0.1
-# tt = 0
-# #There are often duplicate items in the dataset, and we no longer differentiate them
-# while True:
-#     if tt >= 20 or check_collision(all_indices_str):
-#         break
+tt = 0
+#There are often duplicate items in the dataset, and we no longer differentiate them
+while True:
+    if tt >= 20 or check_collision(all_indices_str):
+        break
 
-#     collision_item_groups = get_collision_item(all_indices_str)
-#     print(collision_item_groups)
-#     print(len(collision_item_groups))
-#     for collision_items in collision_item_groups:
-#         d = data[collision_items]
-#         d = d[0].to(device)
-#         indices = model.get_indices(d, labels, use_sk=True)
+    collision_item_groups = get_collision_item(all_indices_str)
+    print(collision_item_groups)
+    print(len(collision_item_groups))
+    for collision_items in collision_item_groups:
+        d = data[collision_items]
+        d = d[0].to(device)
+        indices = model.get_indices(d, labels, use_sk=True)
 
-#         # indices = model.get_indices(d, use_sk=True)
-#         indices = indices.view(-1, indices.shape[-1]).cpu().numpy()
-#         for item, index in zip(collision_items, indices):
-#             code = []
-#             for i, ind in enumerate(index):
-#                 code.append(prefix[i].format(int(ind)))
+        # indices = model.get_indices(d, use_sk=True)
+        indices = indices.view(-1, indices.shape[-1]).cpu().numpy()
+        for item, index in zip(collision_items, indices):
+            code = []
+            for i, ind in enumerate(index):
+                code.append(prefix[i].format(int(ind)))
 
-#             all_indices[item] = code
-#             all_indices_str[item] = str(code)
-#     tt += 1
+            all_indices[item] = code
+            all_indices_str[item] = str(code)
+    tt += 1
 
 
 print("All indices number: ",len(all_indices))
